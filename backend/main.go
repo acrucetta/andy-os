@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/rs/cors"
 )
 
 var upgrader = websocket.Upgrader{
@@ -53,44 +51,47 @@ var (
 )
 
 func main() {
-	r := mux.NewRouter()
+	r := gin.Default()
 
 	// CORS middleware
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3002"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"*"},
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:3002")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "*")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
 	})
 
 	// API routes
-	r.HandleFunc("/api/state", getState).Methods("GET")
-	r.HandleFunc("/api/windows", createWindow).Methods("POST")
-	r.HandleFunc("/api/windows/{id}", updateWindow).Methods("PUT")
-	r.HandleFunc("/api/windows/{id}", deleteWindow).Methods("DELETE")
-	r.HandleFunc("/api/files", getFiles).Methods("GET")
-	r.HandleFunc("/api/files", createFile).Methods("POST")
-	r.HandleFunc("/api/theme", updateTheme).Methods("PUT")
-	r.HandleFunc("/ws", handleWebSocket)
-
-	// Apply CORS
-	handler := c.Handler(r)
+	r.GET("/api/state", getState)
+	r.POST("/api/windows", createWindow)
+	r.PUT("/api/windows/:id", updateWindow)
+	r.DELETE("/api/windows/:id", deleteWindow)
+	r.GET("/api/files", getFiles)
+	r.POST("/api/files", createFile)
+	r.PUT("/api/theme", updateTheme)
+	r.GET("/ws", handleWebSocket)
 
 	log.Println("Server starting on :3001")
-	log.Fatal(http.ListenAndServe(":3001", handler))
+	r.Run(":3001")
 }
 
-func getState(w http.ResponseWriter, r *http.Request) {
+func getState(c *gin.Context) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	c.JSON(http.StatusOK, state)
 }
 
-func createWindow(w http.ResponseWriter, r *http.Request) {
+func createWindow(c *gin.Context) {
 	var window Window
-	if err := json.NewDecoder(r.Body).Decode(&window); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&window); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -99,17 +100,15 @@ func createWindow(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	broadcastState()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(window)
+	c.JSON(http.StatusOK, window)
 }
 
-func updateWindow(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
+func updateWindow(c *gin.Context) {
+	id := c.Param("id")
 
 	var window Window
-	if err := json.NewDecoder(r.Body).Decode(&window); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&window); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -123,13 +122,11 @@ func updateWindow(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	broadcastState()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(window)
+	c.JSON(http.StatusOK, window)
 }
 
-func deleteWindow(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
+func deleteWindow(c *gin.Context) {
+	id := c.Param("id")
 
 	mutex.Lock()
 	for i, w := range state.Windows {
@@ -141,21 +138,20 @@ func deleteWindow(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	broadcastState()
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func getFiles(w http.ResponseWriter, r *http.Request) {
+func getFiles(c *gin.Context) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state.Files)
+	c.JSON(http.StatusOK, state.Files)
 }
 
-func createFile(w http.ResponseWriter, r *http.Request) {
+func createFile(c *gin.Context) {
 	var file File
-	if err := json.NewDecoder(r.Body).Decode(&file); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&file); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -164,16 +160,15 @@ func createFile(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	broadcastState()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(file)
+	c.JSON(http.StatusOK, file)
 }
 
-func updateTheme(w http.ResponseWriter, r *http.Request) {
+func updateTheme(c *gin.Context) {
 	var req struct {
 		Theme string `json:"theme"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -182,12 +177,11 @@ func updateTheme(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	broadcastState()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"theme": state.Theme})
+	c.JSON(http.StatusOK, gin.H{"theme": state.Theme})
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+func handleWebSocket(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println(err)
 		return
