@@ -13,12 +13,12 @@ ___
 
 ### Backend (Go)
 
-1.  [ ] Create a `data` directory in `backend` for file storage.
-2.  [ ] Add the Gin web framework to `go.mod`.
-3.  [ ] Implement a `POST /api/save` endpoint in `main.go` to save file content.
-4.  [ ] Implement a `GET /api/files` endpoint to list saved files.
-5.  [ ] Implement a `GET /api/files/:filename` endpoint to load a specific file.
-6.  [ ] Add CORS middleware to allow frontend requests.
+1.  [X] Create a `data` directory in `backend` for file storage.
+2.  [X] Add the Gin web framework to `go.mod`.
+3.  [X] Implement a `POST /api/save` endpoint in `main.go` to save file content.
+4.  [X] Implement a `GET /api/files` endpoint to list saved files.
+5.  [X] Implement a `GET /api/files/:filename` endpoint to load a specific file.
+6.  [X] Add CORS middleware to allow frontend requests.
 
 ### Frontend (React)
 

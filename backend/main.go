@@ -1,13 +1,18 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+const dataDir = "/data"
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -58,12 +63,12 @@ func main() {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:3002")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "*")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
-		
+
 		c.Next()
 	})
 
@@ -73,7 +78,9 @@ func main() {
 	r.PUT("/api/windows/:id", updateWindow)
 	r.DELETE("/api/windows/:id", deleteWindow)
 	r.GET("/api/files", getFiles)
+	r.GET("/api/files/:filename", loadFile)
 	r.POST("/api/files", createFile)
+	r.POST("/api/save", saveFile)
 	r.PUT("/api/theme", updateTheme)
 	r.GET("/ws", handleWebSocket)
 
@@ -144,7 +151,6 @@ func deleteWindow(c *gin.Context) {
 func getFiles(c *gin.Context) {
 	mutex.RLock()
 	defer mutex.RUnlock()
-
 	c.JSON(http.StatusOK, state.Files)
 }
 
@@ -157,10 +163,65 @@ func createFile(c *gin.Context) {
 
 	mutex.Lock()
 	state.Files = append(state.Files, file)
+	// Save here also to load the file to the data folder.
 	mutex.Unlock()
 
 	broadcastState()
 	c.JSON(http.StatusOK, file)
+}
+
+// Saves the latest file content
+func saveFile(c *gin.Context) {
+	var file File
+	if err := c.ShouldBindJSON(&file); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// Save file content to disk
+	filePath := filepath.Join(dataDir, file.Name)
+	if err := os.WriteFile(filePath, []byte(file.Content), 0644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	// Update in-memory state
+	mutex.Lock()
+	for i, f := range state.Files {
+		if f.Name == file.Name {
+			state.Files[i] = file
+			break
+		}
+	}
+	mutex.Unlock()
+
+	broadcastState()
+	c.JSON(http.StatusOK, file)
+}
+
+// Returns a specific file content
+func loadFile(c *gin.Context) {
+	filename := c.Param("filename")
+
+	// Open file from the data folder
+	filePath := filepath.Join(dataDir, filename)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error reading file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"filename": filename,
+		"content":  string(content),
+	})
 }
 
 func updateTheme(c *gin.Context) {
