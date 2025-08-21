@@ -1,29 +1,30 @@
-
-## Vision: Andy OS a retro computer to teach me about front-end and back-end.
+## Vision: Andy OS a retro computer to teach me about front-end and back-end
 
 Done:
+
 - Windows with emojis and basic CSS
 
 To-do:
+
 - Be able to open a window with the text editor and save a file
   - We need a local file system, some interface to access the files that gets rendered, a button to save the files
 
-
-___
+---
 
 ### Backend (Go)
 
-1.  [X] Create a `data` directory in `backend` for file storage.
-2.  [X] Add the Gin web framework to `go.mod`.
-3.  [X] Implement a `POST /api/save` endpoint in `main.go` to save file content.
-4.  [X] Implement a `GET /api/files` endpoint to list saved files.
-5.  [X] Implement a `GET /api/files/:filename` endpoint to load a specific file.
-6.  [X] Add CORS middleware to allow frontend requests.
+1. [x] Create a `data` directory in `backend` for file storage.
+2. [x] Add the Gin web framework to `go.mod`.
+3. [x] Implement a `POST /api/save` endpoint in `main.go` to save file content.
+4. [x] Implement a `GET /api/files` endpoint to list saved files.
+5. [x] Implement a `GET /api/files/:filename` endpoint to load a specific file.
+6. [x] Add CORS middleware to allow frontend requests.
 
 ### Frontend (React)
 
-1.  [ ] Add a "Save" button to the `Window.tsx` component.
-2.  [ ] Add state to manage the text area content.
-3.  [ ] Implement the `onSave` function to send a `fetch` request to the backend.
-4.  [ ] (Optional) Add a file list to the UI to open existing files.
-5.  (Optional) Display loading/saving/error messages to the user.
+1. [x] Add a "Save" button to the `Window.tsx` component.
+2. [ ] Add state to manage the text area content.
+    1. [ ] When someone writes into the text area, we want to save it to some form of text file.
+3. [ ] Implement the `onSave` function to send a `fetch` request to the backend.
+4. [ ] (Optional) Add a file list to the UI to open existing files.
+5. (Optional) Display loading/saving/error messages to the user.

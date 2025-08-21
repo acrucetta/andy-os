@@ -1,0 +1,4 @@
+# TODO: Ingress configuration
+# - Route external traffic to frontend service
+# - Handle API calls to backend service
+# - SSL/TLS configuration
