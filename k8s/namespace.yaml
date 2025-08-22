@@ -1,5 +1,0 @@
-# TODO: Create andy-os namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: andy-os

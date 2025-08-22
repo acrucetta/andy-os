@@ -1,3 +1,0 @@
-# TODO: Persistent Volume Claim
-# - Storage for backend /data directory
-# - File persistence across pod restarts

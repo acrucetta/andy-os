@@ -1,0 +1,29 @@
+# TODO: Backend deployment and service
+# - Deployment for andy-os-backend
+# - Service exposing port 3001
+# - Volume mount for /data directory
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  selector:
+    matchLabels:
+      app: andy-os
+      tier: backend
+      track: stable
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: andy-os
+        tier: backend
+        track: stable
+    spec:
+      containers:
+        - name: andy-os-backend 
+          image: "andy-os-backend:latest"
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3001
